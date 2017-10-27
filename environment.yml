@@ -1,0 +1,8 @@
+name: racist
+dependencies:
+  - python=3.4
+  - pip=9.0.1
+  - pip:
+    - mysql-connector==2.1.6
+    - progressbar2==3.34.3
+    - git+https://github.com/mobolic/facebook-sdk.git#egg=facebook-sdk
