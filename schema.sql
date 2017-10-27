@@ -25,20 +25,27 @@ DROP TABLE IF EXISTS `comment`;
 CREATE TABLE `comment` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `user` int(11) NOT NULL,
-  `post` int(11) NOT NULL,
+  `parent_comment` int(11) DEFAULT NULL,
+  `post` int(11) DEFAULT NULL,
   `page` int(11) NOT NULL,
-  `fb_id` char(33) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `fb_id` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
   `created_time` datetime NOT NULL,
   `message` text COLLATE utf8mb4_unicode_ci NOT NULL,
+  `like_count` int(11) NOT NULL,
+  `comment_count` int(11) NOT NULL,
+  `crawled` bit(1) NOT NULL DEFAULT b'0',
+  `in_progress` bit(1) NOT NULL DEFAULT b'0',
   PRIMARY KEY (`id`),
   UNIQUE KEY `comment_fb_id` (`fb_id`),
   KEY `FK_comment_page` (`page`),
   KEY `FK_comment_post` (`post`),
   KEY `FK_comment_user` (`user`),
+  KEY `FK_comment_comment` (`parent_comment`),
+  CONSTRAINT `FK_comment_comment` FOREIGN KEY (`parent_comment`) REFERENCES `comment` (`id`),
   CONSTRAINT `FK_comment_page` FOREIGN KEY (`page`) REFERENCES `page` (`id`),
   CONSTRAINT `FK_comment_post` FOREIGN KEY (`post`) REFERENCES `post` (`id`),
   CONSTRAINT `FK_comment_user` FOREIGN KEY (`user`) REFERENCES `user` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=378813 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci CHECKSUM=1 DELAY_KEY_WRITE=1 ROW_FORMAT=DYNAMIC;
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci CHECKSUM=1 DELAY_KEY_WRITE=1 ROW_FORMAT=DYNAMIC;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -50,11 +57,13 @@ DROP TABLE IF EXISTS `page`;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `page` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
-  `fb_id` char(15) NOT NULL,
+  `fb_id` varchar(32) NOT NULL,
   `path` varchar(50) NOT NULL,
-  `name` varchar(200) NOT NULL,
+  `name` varchar(255) NOT NULL,
+  `crawled` bit(1) NOT NULL DEFAULT b'0',
+  `in_progress` bit(1) NOT NULL DEFAULT b'0',
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=latin1;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -67,17 +76,17 @@ DROP TABLE IF EXISTS `post`;
 CREATE TABLE `post` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `page` int(11) NOT NULL,
-  `fb_id` char(32) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `fb_id` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
   `created_time` datetime NOT NULL,
   `story` text COLLATE utf8mb4_unicode_ci,
   `message` text COLLATE utf8mb4_unicode_ci,
-  `comments_crawled` bit(1) NOT NULL DEFAULT b'0',
+  `crawled` bit(1) NOT NULL DEFAULT b'0',
   `in_progress` bit(1) NOT NULL DEFAULT b'0',
   PRIMARY KEY (`id`),
   UNIQUE KEY `post_fb_id` (`fb_id`),
   KEY `FK_post_page` (`page`),
   CONSTRAINT `FK_post_page` FOREIGN KEY (`page`) REFERENCES `page` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=787 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci CHECKSUM=1 DELAY_KEY_WRITE=1 ROW_FORMAT=DYNAMIC;
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci CHECKSUM=1 DELAY_KEY_WRITE=1 ROW_FORMAT=DYNAMIC;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -89,11 +98,11 @@ DROP TABLE IF EXISTS `user`;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `user` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
-  `fb_id` varchar(40) NOT NULL,
+  `fb_id` varchar(100) NOT NULL,
   `name` varchar(200) NOT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `user_fb_id` (`fb_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=88274 DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=latin1;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
@@ -105,4 +114,4 @@ CREATE TABLE `user` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2017-01-20 20:05:54
+-- Dump completed on 2017-01-22 14:45:03
