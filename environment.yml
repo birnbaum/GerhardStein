@@ -5,4 +5,5 @@ dependencies:
   - pip:
     - mysql-connector==2.1.6
     - progressbar2==3.34.3
+    - pyyaml==3.12
     - git+https://github.com/mobolic/facebook-sdk.git#egg=facebook-sdk

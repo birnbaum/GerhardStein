@@ -1,24 +1,23 @@
 from datetime import datetime, timedelta
-import sys
-import json
 import re
 import time
 import mysql.connector
 import facebook
 import progressbar
+import yaml
 
 
 def main():
-    with open('config.json', 'r') as c:
-        config = json.load(c)
+    with open('config.yaml', 'r') as c:
+        config = yaml.load(c)
 
     crawler = Crawler(config)
     crawler.crawl()
 
 class Crawler:
     def __init__(self, config):
-        self.pages = config["facebook"]["pages"]
-        self.start_date = datetime.strptime(config["startDate"], "%Y-%m-%d")
+        self.pages = config["pages"]
+        self.start_date = config["startDate"]
         self.end_date = datetime.today() - timedelta(days=1)  # We only crawl until 24h before "now" to not miss out on new subcomments
 
         # Initialize database
@@ -138,7 +137,7 @@ class Crawler:
             return self.cursor.lastrowid
 
     @staticmethod
-    def _clean_message(self, comment):
+    def _clean_message(comment):
         message = comment['message']
         # Remove comments with linked persons (they mostly contain only emojis)
         if 'message_tags' in comment:
