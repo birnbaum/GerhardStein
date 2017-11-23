@@ -33,8 +33,6 @@ CREATE TABLE `comment` (
   `message` text COLLATE utf8mb4_unicode_ci NOT NULL,
   `like_count` int(11) NOT NULL,
   `comment_count` int(11) NOT NULL,
-  `crawled` bit(1) NOT NULL DEFAULT b'0',
-  `in_progress` bit(1) NOT NULL DEFAULT b'0',
   PRIMARY KEY (`id`),
   UNIQUE KEY `comment_fb_id` (`fb_id`),
   KEY `FK_comment_page` (`page`),
@@ -60,8 +58,6 @@ CREATE TABLE `page` (
   `fb_id` varchar(32) NOT NULL,
   `path` varchar(50) NOT NULL,
   `name` varchar(255) NOT NULL,
-  `crawled` bit(1) NOT NULL DEFAULT b'0',
-  `in_progress` bit(1) NOT NULL DEFAULT b'0',
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=latin1;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -80,8 +76,7 @@ CREATE TABLE `post` (
   `created_time` datetime NOT NULL,
   `story` text COLLATE utf8mb4_unicode_ci,
   `message` text COLLATE utf8mb4_unicode_ci,
-  `crawled` bit(1) NOT NULL DEFAULT b'0',
-  `in_progress` bit(1) NOT NULL DEFAULT b'0',
+  `do_not_crawl` bit(1) NOT NULL DEFAULT b'0',
   PRIMARY KEY (`id`),
   UNIQUE KEY `post_fb_id` (`fb_id`),
   KEY `FK_post_page` (`page`),

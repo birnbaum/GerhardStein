@@ -1,188 +1,131 @@
 from datetime import datetime, timedelta
 import sys
+import json
+import re
 import time
 import mysql.connector
 import facebook
 import progressbar
 
-# You have to register a Facebook App (https://developers.facebook.com/) to retrieve an App ID and Secret.
-# No further configurations required.
-FACEBOOK_APP_ID = '*****'
-FACEBOOK_APP_SECRET = '*****'
-
-# Any list of facebook page IDs that the account connected to your App has access to.
-FACEBOOK_SITES = [
-    'npd.de', 
-    'npdsaar', 
-    'npdhamburg', 
-    'NpdBremen', 
-    'npdthueringen',
-    'npd.niedersachsen',
-    'NPDSchleswigHolstein',
-    'npdmup',
-    'npd.sachsen',
-    'npdbayern',
-    'npd.brandenburg',
-    'jugend.waehlt.npd',
-    'ring.nationaler.frauen',
-    'FamilieVolkundHeimat',
-    'junge.nationalisten', 
-    'DeutschlandGegenKindesmissbrauch',
-    'patriotAUF',
-    'wfdwirfeurdeutschland',
-    'MutZurWahrheit2017'
-]
-
-# Initialize/reset db:  mysql -u root facebook < schema.sql
-# Save schema changes:  mysqldump --no-data -u root facebook > schema.sql
-MYSQL_HOST = '127.0.0.1'
-MYSQL_USER = 'root'
-MYSQL_PASSWORD = ''
-MYSQL_DB = 'facebook'
-
-# Example datetime window: September 2017
-START_DATE = datetime(2017, 9,  1)
-END_DATE   = datetime(2017, 9, 30, 23, 59, 59, 999)
 
 def main():
-    crawler = Crawler(FACEBOOK_APP_ID, FACEBOOK_APP_SECRET)
-    while True:
-        try:
-            crawler.crawl(FACEBOOK_SITES)
-            break
-        except Exception as e:
-            print(e)
-            time.sleep(5000)
-            main()
+    with open('config.json', 'r') as c:
+        config = json.load(c)
+
+    crawler = Crawler(config)
+    crawler.crawl()
 
 class Crawler:
-    def __init__(self, facebook_app_id, facebook_app_secret):
-        # Initializing database
-        self.cnx = mysql.connector.connect(user=MYSQL_USER, password=MYSQL_PASSWORD, host=MYSQL_HOST, database=MYSQL_DB)
+    def __init__(self, config):
+        self.pages = config["facebook"]["pages"]
+        self.start_date = datetime.strptime(config["startDate"], "%Y-%m-%d")
+        self.end_date = datetime.today() - timedelta(days=1)  # We only crawl until 24h before "now" to not miss out on new subcomments
+
+        # Initialize database
+        self.cnx = mysql.connector.connect(user=config["database"]["user"],
+                                           password=config["database"]["password"],
+                                           host=config["database"]["host"],
+                                           database=config["database"]["db"])
         self.cursor = self.cnx.cursor()
-        # Initializing Facebook Graph API
-        token = facebook.GraphAPI().get_app_access_token(FACEBOOK_APP_ID, FACEBOOK_APP_SECRET, offline=False)
-        self.graph = facebook.GraphAPI(access_token=token, version='2.7')
-        # Clean up any messy state from previous runs
-        self._clean_up()
 
-    def crawl(self, pages):
-        self.crawl_pages(pages)
-        self.crawl_posts(START_DATE, END_DATE)
-        self.crawl_comments()
-        self.crawl_subcomments()
-        #self.crawl_likes()
+        # Initialize Facebook Graph API
+        token = facebook.GraphAPI().get_app_access_token(config["facebook"]["appId"], config["facebook"]["appSecret"], offline=False)
+        #token = 'EAACEdEose0cBADJPw82v91QOlpksut3AI2fuRuZAffZAnuwC4duZAqw2JRVxfk8WjaRDmouojgclZCjZCD4JX14s4N7oohSdw0Y90DY4X4weRNBWSi3zzz8fDSbZCuZCFZBvPPUgLQbxAbAXAZAPyNDgZBtZBWB7JlZCZCymgo7qF8y1GBgavsgDWkZBsx3ZCzaZB93ZByNIKzOQTbaKtUgZDZD'
+        self.graph = facebook.GraphAPI(access_token=token, version='2.10')
 
-    def crawl_pages(self, paths):
-        print('Crawling pages...')
-        for path in paths:
-            self.cursor.execute('SELECT * FROM page WHERE path=%s', (path,))
+
+    def crawl(self):
+        # Crawl pages
+        for page_path in self.pages:
+            self.cursor.execute('SELECT * FROM page WHERE path=%s', (page_path,))
             if len(self.cursor.fetchall()) == 0:
-                page = self.graph.get_object(path)
-                print('Inserting "www.facebook.com/{}": "{}"'.format(path, page['name']))
-                self.cursor.execute('INSERT INTO page (fb_id, path, name) VALUES (%s,%s,%s)', (page['id'], path, page['name']))
+                page = self.graph.get_object(page_path)
+                print('Inserting "www.facebook.com/{}": "{}"'.format(page_path, page['name']))
+                self.cursor.execute('INSERT INTO page (fb_id, path, name) VALUES (%s,%s,%s)',
+                                    (page['id'], page_path, page['name']))
                 self.cnx.commit()
 
-    def crawl_posts(self, start_date, end_date):
-        print('\nCrawling posts...')
-        self.cursor.execute('SELECT name, id, fb_id FROM page WHERE crawled=0')
+        # Crawl posts
+        self.cursor.execute('SELECT name, id, fb_id FROM page')
         for (page_name, page_id, page_fb_id) in self.cursor.fetchall():
-            print('Downloading posts of "{0}"...'.format(page_name))
-            self.cursor.execute('UPDATE page SET in_progress=1 WHERE id=%s', (page_id,))
-            self.cnx.commit()
-            posts = self.graph.get_all_connections(page_fb_id, 'posts', since=time.mktime(start_date.timetuple()), until=time.mktime(end_date.timetuple()), limit=100)
-            for post_number, post in enumerate(posts):
-                if post_number > 0 and post_number % 100 == 100:
-                    print('Downloaded {0} posts'.format(post_number))
+            # Compute start and end date
+            self.cursor.execute('SELECT max(created_time) FROM post WHERE page=%s', (page_id,))
+            latest_date = self.cursor.fetchone()[0]
+            if latest_date is None:
+                latest_date = self.start_date
+            start_date = time.mktime(latest_date.timetuple())
+            end_date = time.mktime(self.end_date.timetuple())
+
+            # Download posts
+            print('Crawling "{}" posts starting from {} ...'.format(page_name, latest_date.strftime('%B %d, %Y')), end='')
+            posts = self.graph.get_all_connections(page_fb_id, 'posts', order='chronological', since=start_date, until=end_date, limit=100)
+            counter = 0
+            for post in posts:
                 values = (page_id, post['id'], post['created_time'], post.get('story'), post.get('message'))
-                try:
-                    self.cursor.execute('INSERT INTO post (page, fb_id, created_time, story, message)'
-                                'VALUES (%s,%s,%s,%s,%s)', values)
-                    self.cnx.commit()
-                except mysql.connector.errors.IntegrityError as error:
-                    print(error)
-                    self.cnx.rollback()
-            self.cursor.execute('UPDATE page SET in_progress=0,crawled=1 WHERE id=%s', (page_id,))
-            self.cnx.commit()
+                success = self._insert_if_possible('INSERT INTO post (page, fb_id, created_time, story, message) VALUES (%s,%s,%s,%s,%s)', values)
+                if success:
+                    counter = counter + 1
+            print(' {} new posts crawled'.format(counter))
 
-    def crawl_comments(self):
-        print('Crawling comments...')
+        # Crawl comments
         bar = progressbar.ProgressBar()
-        self.cursor.execute('SELECT id, page, fb_id FROM post WHERE crawled=0')
-        for (post_id, page_id, post_fb_id) in bar(self.cursor.fetchall()):
-            fields = 'id,message,from,created_time,like_count,comment_count'
-            comments = self.graph.get_all_connections(post_fb_id, 'comments', fields=fields, limit=100)
-            self.cursor.execute('UPDATE post SET in_progress=1 WHERE id=%s', (post_id,))
-            self.cnx.commit()
+        self.cursor.execute('SELECT id, page, fb_id, created_time FROM post WHERE do_not_crawl=0')
+        fields = 'id,message,message_tags,from,created_time,comment_count,like_count'
+        comment_counter = 0
+        for (post_id, page_id, post_fb_id, post_created_time) in bar(self.cursor.fetchall()):
+            self.cursor.execute('SELECT max(created_time) FROM comment WHERE post=%s', (post_id,))
+            latest_date = self.cursor.fetchone()[0]
+            if latest_date is None:
+                comments = self.graph.get_all_connections(post_fb_id, 'comments', fields=fields, order='chronological', limit=100)
+            else:
+                start_date = time.mktime(latest_date.timetuple())
+                comments = self.graph.get_all_connections(post_fb_id, 'comments', fields=fields, order='chronological', limit=100, since=start_date)
             for comment in comments:
-                user_id = self._get_or_create_user(comment['from'])
-                values = (user_id, post_id, page_id, comment['id'], comment['created_time'],
-                        comment['message'], comment['like_count'], comment['comment_count'])
-                self.cursor.execute('INSERT INTO comment '
-                            '(user, post, page, fb_id, created_time, message, like_count, comment_count) '
-                            'VALUES (%s,%s,%s,%s,%s,%s,%s,%s)', values)
+                success = self._add_comment(comment, post_id, page_id)
+                if success:
+                    comment_counter = comment_counter + 1
+                if success and comment['comment_count'] > 0:
+                    self.cnx.commit()
+                    comment_id = self.cursor.lastrowid
+                    subcomments = self.graph.get_all_connections(comment['id'], 'comments', fields=fields, order='chronological', limit=500)
+                    for subcomment in subcomments:
+                        success = self._add_comment(subcomment, post_id, page_id, comment_id)
+                        if success:
+                            comment_counter = comment_counter + 1
                 self.cnx.commit()
-            self.cursor.execute('UPDATE post SET in_progress=0,crawled=1 WHERE id=%s', (post_id,))
-            self.cnx.commit()
+            # If all comments are crawled and post is older than 1 month, activate 'do_not_crawl' flag
+            if post_created_time < (datetime.today() - timedelta(days=30)):
+                self.cursor.execute('UPDATE post SET do_not_crawl=1 WHERE id=%s', (post_id,))
 
-    def crawl_subcomments(self):
-        print('Crawling subcomments...')
-        self.cursor.execute('SELECT id, page, fb_id FROM comment WHERE crawled=0 AND comment_count > 0')
-        rows = self.cursor.fetchall()
-        bar = progressbar.ProgressBar(max_value=len(rows))
-        for (parent_comment_id, page_id, parent_comment_fb_id) in bar(rows):
-            self.cursor.execute('UPDATE comment SET in_progress=1 WHERE id=%s', (parent_comment_id,))
-            self.cnx.commit()
-            fields = ('id,message,from,created_time,like_count,comment_count')
-            self._add_subcomments(parent_comment_id, parent_comment_fb_id, page_id, fields)
-            self.cursor.execute('UPDATE comment SET in_progress=0,crawled=1 WHERE id=%s', (parent_comment_id,))
-            self.cnx.commit()
+        print('{} new comments added'.format(comment_counter))
 
-    def crawl_likes(self):
-        self.cursor.execute('SELECT id, fb_id, user FROM comment WHERE likes_crawled=0 AND like_count > 0')
-        rows =  self.cursor.fetchall()
-        bar = progressbar.ProgressBar(max_value=len(rows))
-        for (comment_id, comment_fb_id, commenter_id) in bar(rows):
-            self._add_likes(comment_fb_id, commenter_id)
-            self.cursor.execute('UPDATE comment SET likes_crawled=1 WHERE id=%s', (comment_id,))
-            self.cnx.commit()
-
-    def _add_subcomments(self, parent_comment_id, parent_comment_fb_id, page_id, fields):
+    def _insert_if_possible(self, query, values):
         try:
-            subcomments = self.graph.get_all_connections('268232929583_' + parent_comment_fb_id, 'comments', fields=fields, limit=500)
-            for subcomment in subcomments:
-                user_id = self._get_or_create_user(subcomment['from'])
-                values = (user_id, parent_comment_id, page_id, subcomment['id'], subcomment['created_time'],
-                        subcomment['message'], subcomment['like_count'], subcomment['comment_count'])
-                self.cursor.execute('INSERT INTO comment '
-                            '(user, parent_comment, page, fb_id, created_time, message, like_count, comment_count) '
-                            'VALUES (%s,%s,%s,%s,%s,%s,%s,%s)', values)
-        except facebook.GraphAPIError as error:
-            if 'Unsupported get request. Object with ID' in error.message:
-                print('Skipping ' + parent_comment_fb_id)
-            else:
-                raise error
+            self.cursor.execute(query, values)
+            self.cnx.commit()
+            return True
+        except mysql.connector.errors.IntegrityError:
+            self.cnx.rollback()
+            return False
 
-    def _add_likes(self, comment_fb_id, commenter_id):
-        try:
-            likers = self.graph.get_all_connections(comment_fb_id, 'likes', limit=500)
-            for liker in likers:
-                liker_id = self._get_or_create_user(liker)
-                self.cursor.execute('SELECT count FROM fb_like WHERE liker=%s AND commenter=%s', (liker_id, commenter_id))
-                like = self.cursor.fetchone()
-                if like:
-                    self.cursor.execute('UPDATE fb_like SET count=%s WHERE liker=%s AND commenter=%s', (like[0]+1, liker_id, commenter_id))
-                else:
-                    self.cursor.execute('INSERT INTO fb_like VALUES (%s,%s,%s)', (liker_id, commenter_id, 1))
-        except facebook.GraphAPIError as error:
-            if 'Unsupported get request. Object with ID' in error.message:
-                pass
-                # print('Skipping ' + comment_fb_id)
-            elif 'Please retry your request later.' in error.message:
-                'RETRY'
-                self._add_likes(comment_fb_id, commenter_id)
+    def _add_comment(self, comment, post_id, page_id, parent_comment=None):
+        user_id = self._get_or_create_user(comment['from'])
+        message = self._clean_message(comment)
+        if len(message) > 0:
+            columns = '(user, post, page, fb_id, created_time, message, like_count, comment_count'
+            values = (user_id, post_id, page_id, comment['id'], comment['created_time'],
+                      message, comment['like_count'], comment['comment_count'])
+            values_placeholder = '(%s,%s,%s,%s,%s,%s,%s,%s'
+            if parent_comment is None:
+                columns = columns + ')'
+                values_placeholder = values_placeholder + ')'
             else:
-                raise error.message
+                columns = columns + ',parent_comment)'
+                values = values + (parent_comment,)
+                values_placeholder = values_placeholder + ',%s)'
+            return self._insert_if_possible('INSERT INTO comment {} VALUES {}'.format(columns, values_placeholder), values)
+        else:
+            return False
 
     def _get_or_create_user(self, user):
         self.cursor.execute('SELECT id FROM user WHERE fb_id=%s', (user['id'],))
@@ -194,14 +137,19 @@ class Crawler:
             self.cursor.execute('INSERT INTO user (fb_id, name) VALUES (%s,%s)', (user['id'], user['name']))
             return self.cursor.lastrowid
 
-    def _clean_up(self):
-        for (el, col, subel) in [('page', 'page', 'post'), ('post', 'post', 'comment'), ('comment', 'parent_comment', 'comment')]:
-            self.cursor.execute('SELECT id FROM page WHERE in_progress=1')
-            for (dirty_id,) in self.cursor.fetchall():
-                print('Cleaning {}: {}'.format(el, dirty_id))
-                self.cursor.execute('DELETE FROM {0} WHERE {1}=%s'.format(subel, col), (dirty_id,))
-                self.cursor.execute('UPDATE {0} SET in_progress=0 WHERE id=%s'.format(el), (dirty_id,))
-        self.cnx.commit()
+    @staticmethod
+    def _clean_message(self, comment):
+        message = comment['message']
+        # Remove comments with linked persons (they mostly contain only emojis)
+        if 'message_tags' in comment:
+            return ''
+        # Remove comments with the hashtag #HassHilft (http://hasshilft.de/)
+        if '#HassHilft' in message:
+            return ''
+        # Remove links
+        message = re.sub(r'http\S+', '', message)
+        return message.strip()
+
 
 if __name__ == "__main__":
     main()
