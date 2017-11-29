@@ -4,7 +4,7 @@ import tensorflow as tf
 import argparse
 import time
 import os
-import cPickle
+import pickle
 
 from utils import TextLoader
 from model import Model
@@ -56,7 +56,7 @@ def train(args):
         ckpt = tf.train.get_checkpoint_state(args.save_dir)
         if ckpt and ckpt.model_checkpoint_path:
             with open(os.path.join(args.save_dir, 'config.pkl')) as f:
-                saved_args = cPickle.load(f)
+                saved_args = pickle.load(f)
                 args.rnn_size = saved_args.rnn_size
                 args.num_layers = saved_args.num_layers
                 args.model = saved_args.model
@@ -67,11 +67,11 @@ def train(args):
 
     # Save all arguments to config.pkl in the save directory -- NOT the data directory.
     with open(os.path.join(args.save_dir, 'config.pkl'), 'w') as f:
-        cPickle.dump(args, f)
+        pickle.dump(args, f)
     # Save a tuple of the characters list and the vocab dictionary to chars_vocab.pkl in
     # the save directory -- NOT the data directory.
     with open(os.path.join(args.save_dir, 'chars_vocab.pkl'), 'w') as f:
-        cPickle.dump((data_loader.chars, data_loader.vocab), f)
+        pickle.dump((data_loader.chars, data_loader.vocab), f)
 
     # Create the model!
     print("Building the model")

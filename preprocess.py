@@ -1,8 +1,19 @@
-import os
-
 import mysql.connector
 import progressbar
+import argparse
+import yaml
 
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--out', type=str, default='data/racist/racist.txt',
+                        help='text file where the data is written to')
+    args = parser.parse_args()
+
+    with open('config.yml', 'r') as c:
+        config = yaml.load(c)
+
+    preprocess(args, config)
 
 def iter_row(cursor, size=100):
     while True:
@@ -12,10 +23,13 @@ def iter_row(cursor, size=100):
         for row in rows:
             yield row
 
-cnx = mysql.connector.connect(user='root', password='', host='127.0.0.1', database='facebook')
-cursor = cnx.cursor()
+def preprocess(args, config):
+    cnx = mysql.connector.connect(user=config["database"]["user"],
+                                  password=config["database"]["password"],
+                                  host=config["database"]["host"],
+                                  database=config["database"]["db"])
+    cursor = cnx.cursor()
 
-if __name__ == '__main__':
     cursor.execute('SELECT count(*) FROM comment')
     count = cursor.fetchone()[0]
     bar = progressbar.ProgressBar(max_value=count)
@@ -23,7 +37,14 @@ if __name__ == '__main__':
     cursor.execute('SELECT message FROM comment ORDER BY RAND()')
     txt = ''
     for (message,) in bar(iter_row(cursor)):
-        txt += message + '\n##\n'
+        parts = message.replace('\r', '\n').split('\n')
+        for part in parts:
+            if 4 < len(part) < 1000:
+                txt += '> {}\n'.format(part.strip())
 
-with open("bla.txt", "wb") as f:
-    f.write(txt.encode('utf8'))
+    with open(args.out, "wb") as f:
+        f.write(txt.encode('utf8'))
+
+
+if __name__ == '__main__':
+	main()
