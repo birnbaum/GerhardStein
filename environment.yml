@@ -1,9 +1,12 @@
 name: racist
 dependencies:
-  - python=3.4
-  - pip=9.0.1
+  - python=3.5
+  - numpy
+  - pip
   - pip:
     - mysql-connector==2.1.6
-    - progressbar2==3.34.3
-    - pyyaml==3.12
+    - progressbar2
+    - pyyaml
+    - argparse
     - git+https://github.com/mobolic/facebook-sdk.git#egg=facebook-sdk
+    - tensorflow
