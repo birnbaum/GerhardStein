@@ -1,0 +1,38 @@
+---
+# Either provide an appId and appSecret or a valid userToken
+facebook:
+  userToken: ''
+  # appId: ''
+  # appSecret: ''
+database:
+  host: 127.0.0.1
+  user: root
+  password: ''
+  db: facebook
+pages:
+  - npd.de
+  - npdbw  # Baden-Württemberg
+  - npdbayern  # Bayern
+  - npd.berlin  # Berlin
+  - npd.brandenburg  # Brandenburg
+  - NpdBremen  # Bremen
+  - npdhamburg  # Hamburg
+  - npd.hessen  # Hessen
+  - npdmup  # Mecklenburg-Vorpommern
+  - npd.niedersachsen  # Niedersachsen
+  - npdnrw  # Nordrhein-Westfalen
+  - National.rlp  # Rheinland-Pfalz
+  - npdsaar  # Saarland
+  - npd.sachsen  # Sachsen
+  # - NPD-Sachsen-Anhalt-627792194016177  # Sachsen-Anhalt
+  - NPDSchleswigHolstein  # Schleswig-Holstein
+  - npdthueringen  # Thüringen
+
+  - ff.frankfranz  # NPD Parteivorsitzender Frank Franz
+
+  # Other
+  # - patriotAUF
+  # - ring.nationaler.frauen
+  # - FamilieVolkundHeimat
+  # - junge.nationalisten
+startDate: 2008-01-01
