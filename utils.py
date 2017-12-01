@@ -53,7 +53,7 @@ class TextLoader():
             print("loading sizes file")
             with open(sizes_file, 'rb') as f:
                 self.tensor_sizes = pickle.load(f)
-        self.tensor_batch_counts = [n / (self.batch_size * self.seq_length) for n in self.tensor_sizes]
+        self.tensor_batch_counts = [n // (self.batch_size * self.seq_length) for n in self.tensor_sizes]
         self.total_batch_count = sum(self.tensor_batch_counts)
         print("total batch count: {}".format(self.total_batch_count))
 
@@ -146,7 +146,7 @@ class TextLoader():
         # executed on each member of the iterable. E.g.:
         # [14, 2, 9, 2, 0, 6, 7, 0, ...]
         # np.array converts the list into a numpy array.
-        self.tensor = np.array(map(self.vocab.get, data))
+        self.tensor = np.array(list(map(self.vocab.get, data)))
         # Compress and save the numpy tensor array to data.npz.
         np.savez_compressed(tensor_file, tensor_data=self.tensor)
 
@@ -162,14 +162,14 @@ class TextLoader():
         self.tensor_index = tensor_index
         # Calculate the number of batches in the data. Each batch is batch_size x seq_length,
         # so this is just the input data size divided by that product, rounded down.
-        self.num_batches = self.tensor.size / (self.batch_size * self.seq_length)
+        self.num_batches = self.tensor.size // (self.batch_size * self.seq_length)
         if self.tensor_batch_counts[tensor_index] != self.num_batches:
             print("Error in batch size! Expected {}; found {}".format(self.tensor_batch_counts[tensor_index],
                     self.num_batches))
         # Chop off the end of the data tensor so that the length of the data is a whole
         # multiple of the (batch_size x seq_length) product.
         # Do this with the slice operator on the numpy array.
-        self.tensor = self.tensor[:self.num_batches * self.batch_size * self.seq_length]
+        self.tensor = self.tensor[:int(self.num_batches * self.batch_size * self.seq_length)]
         # Construct two numpy arrays to represent input characters (xdata)
         # and target characters (ydata).
         # In training, we will feed in input characters one at a time, and optimize along

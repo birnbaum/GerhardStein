@@ -15,9 +15,9 @@ def main():
                        help='data directory containing input.txt')
     parser.add_argument('--save_dir', type=str, default='models/new_save',
                        help='directory for checkpointed models (load from here if one is already present)')
-    parser.add_argument('--rnn_size', type=int, default=1500,
+    parser.add_argument('--rnn_size', type=int, default=128,
                        help='size of RNN hidden state')
-    parser.add_argument('--num_layers', type=int, default=4,
+    parser.add_argument('--num_layers', type=int, default=2,
                        help='number of layers in the RNN')
     parser.add_argument('--model', type=str, default='gru',
                        help='rnn, gru, or lstm')
@@ -66,11 +66,11 @@ def train(args):
                 load_model = True
 
     # Save all arguments to config.pkl in the save directory -- NOT the data directory.
-    with open(os.path.join(args.save_dir, 'config.pkl'), 'w') as f:
+    with open(os.path.join(args.save_dir, 'config.pkl'), 'wb') as f:
         pickle.dump(args, f)
     # Save a tuple of the characters list and the vocab dictionary to chars_vocab.pkl in
     # the save directory -- NOT the data directory.
-    with open(os.path.join(args.save_dir, 'chars_vocab.pkl'), 'w') as f:
+    with open(os.path.join(args.save_dir, 'chars_vocab.pkl'), 'wb') as f:
         pickle.dump((data_loader.chars, data_loader.vocab), f)
 
     # Create the model!
@@ -80,7 +80,7 @@ def train(args):
     config = tf.ConfigProto(log_device_placement=False)
     config.gpu_options.allow_growth = True
     with tf.Session(config=config) as sess:
-        tf.initialize_all_variables().run()
+        tf.global_variables_initializer().run()
         saver = tf.train.Saver(model.save_variables_list())
         if (load_model):
             print("Loading saved parameters")
@@ -95,7 +95,7 @@ def train(args):
                 - int(global_epoch_fraction)) * data_loader.total_batch_count)
         epoch_range = (int(global_epoch_fraction),
                 args.num_epochs + int(global_epoch_fraction))
-        writer = tf.train.SummaryWriter(args.save_dir, graph=tf.get_default_graph())
+        writer = tf.summary.FileWriter(args.save_dir, graph=tf.get_default_graph())
         outputs = [model.cost, model.final_state, model.train_op, model.summary_op]
         is_lstm = args.model == 'lstm'
         global_step = epoch_range[0] * data_loader.total_batch_count + initial_batch_step
@@ -141,8 +141,8 @@ def train(args):
                     elapsed = time.time() - start
                     global_seconds_elapsed += elapsed
                     writer.add_summary(summary, e * batch_range[1] + b + 1)
-                    print("{}/{} (epoch {}/{}), loss = {:.3f}, time/batch = {:.3f}s")\
-                        .format(b, batch_range[1], e, epoch_range[1], train_loss, elapsed)
+                    print("{}/{} (epoch {}/{}), loss = {:.3f}, time/batch = {:.3f}s"\
+                        .format(b, batch_range[1], e, epoch_range[1], train_loss, elapsed))
                     # Every save_every batches, save the model to disk.
                     # By default, only the five most recent checkpoint files are kept.
                     if (e * batch_range[1] + b + 1) % args.save_every == 0 \
@@ -162,7 +162,7 @@ def train(args):
 def save_model(sess, saver, model, save_dir, global_step, steps_per_epoch, global_seconds_elapsed):
     global_epoch_fraction = float(global_step) / float(steps_per_epoch)
     checkpoint_path = os.path.join(save_dir, 'model.ckpt')
-    print("Saving model to {} (epoch fraction {:.3f})").format(checkpoint_path, global_epoch_fraction)
+    print("Saving model to {} (epoch fraction {:.3f})".format(checkpoint_path, global_epoch_fraction))
     sess.run(tf.assign(model.global_epoch_fraction, global_epoch_fraction))
     sess.run(tf.assign(model.global_seconds_elapsed, global_seconds_elapsed))
     saver.save(sess, checkpoint_path, global_step = global_step)

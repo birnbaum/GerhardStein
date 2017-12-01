@@ -5,7 +5,7 @@ import tensorflow as tf
 
 import argparse
 import os
-import cPickle
+import pickle
 import copy
 import sys
 import string
@@ -15,7 +15,7 @@ from model import Model
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--save_dir', type=str, default='models/reddit',
+    parser.add_argument('--save_dir', type=str, default='models/new_save',
                        help='model directory to store checkpointed models')
     parser.add_argument('-n', type=int, default=500,
                        help='number of characters to sample')
@@ -57,17 +57,17 @@ def sample_main(args):
     # Load the separate arguments by which that model was previously trained.
     # That's saved_args. Use those to load the model.
     with open(config_path) as f:
-        saved_args = cPickle.load(f)
+        saved_args = pickle.load(f)
     # Separately load chars and vocab from the save directory.
     with open(vocab_path) as f:
-        chars, vocab = cPickle.load(f)
+        chars, vocab = pickle.load(f)
     # Create the model from the saved arguments, in inference mode.
     print("Creating model...")
     net = Model(saved_args, True)
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
     with tf.Session(config=config) as sess:
-        tf.initialize_all_variables().run()
+        tf.global_variables_initializer().run()
         saver = tf.train.Saver(net.save_variables_list())
         # Restore the saved variables, replacing the initialized values.
         print("Restoring weights...")
@@ -174,7 +174,7 @@ def process_user_command(user_input, states, relevance, temperature, beam_width)
     return user_command_entered, reset, states, relevance, temperature, beam_width
 
 def consensus_length(beam_outputs, early_term_token):
-    for l in xrange(len(beam_outputs[0])):
+    for l in range(len(beam_outputs[0])):
         if l > 0 and beam_outputs[0][l-1] == early_term_token:
             return l-1, True
         for b in beam_outputs[1:]:
