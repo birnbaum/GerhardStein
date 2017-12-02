@@ -1,3 +1,6 @@
 .idea
+__pycache__
 
 src
+models
+data

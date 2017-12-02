@@ -3,6 +3,7 @@ import progressbar
 import argparse
 import yaml
 import re
+import collections
 
 
 def main():
@@ -24,6 +25,22 @@ def iter_row(cursor, size=1000):
             break
         for row in rows:
             yield row
+
+
+def remove_rare_characters(text):
+    """Removes all characters that appear in less than 0.002% of the cases"""
+    vocab_counter = collections.Counter()  # 750
+    vocab_counter.update(text)
+
+    threshold = len(text) * 0.00002
+    chars_to_remove = []
+    for char, count in reversed(vocab_counter.most_common()):
+        if count < threshold:
+            chars_to_remove.append(char)
+        else:
+            break
+
+    return re.sub('[' + re.escape(''.join(chars_to_remove)) + ']', '', text)
 
 
 def generate_text(args, config):
@@ -58,6 +75,8 @@ def generate_text(args, config):
         for line in lines:
             if 4 < len(line) < 1000 and '@ ' not in line:
                 txt += '> {}\n'.format(line.strip())
+
+    txt = remove_rare_characters(txt)
 
     with open(args.out, "wb") as f:
         f.write(txt.encode("cp1252", errors="ignore"))
