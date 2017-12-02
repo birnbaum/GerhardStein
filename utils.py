@@ -92,8 +92,8 @@ class TextLoader():
         elif input_file.endswith(".txt"): file_reference = io.open(input_file, "r")
         raw_data = file_reference.read()
         file_reference.close()
-        u_data = raw_data.encode(encoding=self.encoding)
-        vocab_counter.update(u_data)
+        # u_data = raw_data.encode(encoding=self.encoding)
+        vocab_counter.update(raw_data)
 
     def _save_vocab(self, vocab_counter, vocab_file):
         # count_pairs is a list of these dictionary entries, sorted in descending order.

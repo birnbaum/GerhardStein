@@ -13,7 +13,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--data_dir', type=str, default='data/racist',
                        help='data directory containing input.txt')
-    parser.add_argument('--save_dir', type=str, default='models/new_save',
+    parser.add_argument('--save_dir', type=str, default='models/racist',
                        help='directory for checkpointed models (load from here if one is already present)')
     parser.add_argument('--rnn_size', type=int, default=128,
                        help='size of RNN hidden state')
@@ -55,7 +55,7 @@ def train(args):
         # Trained model already exists
         ckpt = tf.train.get_checkpoint_state(args.save_dir)
         if ckpt and ckpt.model_checkpoint_path:
-            with open(os.path.join(args.save_dir, 'config.pkl')) as f:
+            with open(os.path.join(args.save_dir, 'config.pkl'), 'rb') as f:
                 saved_args = pickle.load(f)
                 args.rnn_size = saved_args.rnn_size
                 args.num_layers = saved_args.num_layers
