@@ -89,11 +89,10 @@ class TextLoader():
         # Load up the input.txt file and use it to create a vocab file and a tensor file
         # at the specified file paths.
         if input_file.endswith(".bz2"): file_reference = BZ2File(input_file, "r")
-        elif input_file.endswith(".txt"): file_reference = io.open(input_file, "r")
-        raw_data = file_reference.read()
-        file_reference.close()
-        # u_data = raw_data.encode(encoding=self.encoding)
-        vocab_counter.update(raw_data)
+        elif input_file.endswith(".txt"): file_reference = open(input_file, "r")
+        with file_reference as f:
+            data = file_reference.read()
+        vocab_counter.update(data)
 
     def _save_vocab(self, vocab_counter, vocab_file):
         # count_pairs is a list of these dictionary entries, sorted in descending order.
@@ -137,10 +136,9 @@ class TextLoader():
 
     def _preprocess(self, input_file, tensor_file):
         if input_file.endswith(".bz2"): file_reference = BZ2File(input_file, "r")
-        elif input_file.endswith(".txt"): file_reference = io.open(input_file, "r")
-        raw_data = file_reference.read()
-        file_reference.close()
-        data = raw_data.encode(encoding=self.encoding)
+        elif input_file.endswith(".txt"): file_reference = open(input_file, "r")
+        with file_reference as f:
+            data = file_reference.read()
         # Convert the entirety of the data file from characters to indices via the vocab dictionary.
         # How? map(function, iterable) returns a list of the output of the function
         # executed on each member of the iterable. E.g.:

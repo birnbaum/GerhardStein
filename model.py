@@ -1,11 +1,12 @@
 import tensorflow as tf
-from tensorflow.python.ops import rnn_cell
 from tensorflow.contrib import legacy_seq2seq as seq2seq
+import tensorflow.contrib.rnn as rnn_cell
 
 import numpy as np
 
+
 class Model():
-    def __init__(self, args, infer=False): # infer is set to true during sampling.
+    def __init__(self, args, infer=False):  # infer is set to true during sampling.
         self.args = args
         if infer:
             # Worry about one character at a time during sampling; no batching or BPTT.
@@ -99,8 +100,8 @@ class Model():
         # not character space.
         # State is a tensor of shape [batch_size x cell.state_size].
         # This is also the step where all of the trainable parameters for the LSTM (weights and biases) are defined.
-        outputs, self.final_state = seq2seq.rnn_decoder(inputs,
-                self.initial_state, cell, loop_function=loop if infer else None, scope='rnnlm')
+        outputs, self.final_state = seq2seq.rnn_decoder(inputs, self.initial_state, cell,
+                                                        loop_function=loop if infer else None, scope='rnnlm')
         # tf.concat concatenates the output tensors along the rnn_size dimension,
         # to make a single tensor of shape [batch_size x (seq_length * rnn_size)].
         # This gives the following 2D outputs matrix:
@@ -156,10 +157,10 @@ class Model():
         # implicitly represented by the target characters against the probability distrutions in logits.
         # It returns a 1D float tensor (a vector) where item i is the log-perplexity of
         # the comparison of the ith logit distribution to the ith one-hot target vector.
-        loss = seq2seq.sequence_loss_by_example([self.logits], # logits: 1-item list of 2D Tensors of shape [batch_size x vocab_size]
-                [tf.reshape(self.targets, [-1])], # targets: 1-item list of 1D batch-sized int32 Tensors of the same length as logits
-                [tf.ones([args.batch_size * args.seq_length])], # weights: 1-item list of 1D batch-sized float-Tensors of the same length as logits
-                args.vocab_size) # num_decoder_symbols: integer, number of decoder symbols (output classes)
+        loss = seq2seq.sequence_loss_by_example([self.logits],  # logits: 1-item list of 2D Tensors of shape [batch_size x vocab_size]
+                                                [tf.reshape(self.targets, [-1])],  # targets: 1-item list of 1D batch-sized int32 Tensors of the same length as logits
+                                                [tf.ones([args.batch_size * args.seq_length])],  # weights: 1-item list of 1D batch-sized float-Tensors of the same length as logits
+                                                args.vocab_size)  # num_decoder_symbols: integer, number of decoder symbols (output classes)
         # Cost is the arithmetic mean of the values of the loss tensor
         # (the sum divided by the total number of elements).
         # It is a single-element floating point tensor. This is what the optimizer seeks to minimize.
@@ -170,12 +171,12 @@ class Model():
         self.lr = tf.Variable(args.learning_rate, trainable=False)
         self.global_epoch_fraction = tf.Variable(0.0, trainable=False)
         self.global_seconds_elapsed = tf.Variable(0.0, trainable=False)
-        tvars = tf.trainable_variables() # tvars is a python list of all trainable TF Variable objects.
+        tvars = tf.trainable_variables()  # tvars is a python list of all trainable TF Variable objects.
 
         # tf.gradients returns a list of tensors of length len(tvars) where each tensor is sum(dy/dx).
         grads, _ = tf.clip_by_global_norm(tf.gradients(self.cost, tvars),
-                args.grad_clip)
-        optimizer = tf.train.AdamOptimizer(self.lr) # Use ADAM optimizer with the current learning rate.
+                                          args.grad_clip)
+        optimizer = tf.train.AdamOptimizer(self.lr)  # Use ADAM optimizer with the current learning rate.
         # Zip creates a list of tuples, where each tuple is (variable tensor, gradient tensor).
         # Training op nudges the variables along the gradient, with the given learning rate, using the ADAM optimizer.
         # This is the op that a training session should be instructed to perform.
@@ -198,6 +199,6 @@ class Model():
         '''Run a forward pass. Return the updated hidden state and the output probabilities.'''
         shaped_input = np.array([[input_sample]], np.float32)
         inputs = {self.input_data: shaped_input,
-                    self.initial_state: state}
+                  self.initial_state: state}
         [probs, state] = sess.run([self.probs, self.final_state], feed_dict=inputs)
         return probs[0], state

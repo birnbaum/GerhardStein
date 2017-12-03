@@ -15,9 +15,9 @@ def main():
                        help='data directory containing input.txt')
     parser.add_argument('--save_dir', type=str, default='models/racist',
                        help='directory for checkpointed models (load from here if one is already present)')
-    parser.add_argument('--rnn_size', type=int, default=128,
+    parser.add_argument('--rnn_size', type=int, default=256,
                        help='size of RNN hidden state')
-    parser.add_argument('--num_layers', type=int, default=2,
+    parser.add_argument('--num_layers', type=int, default=3,
                        help='number of layers in the RNN')
     parser.add_argument('--model', type=str, default='gru',
                        help='rnn, gru, or lstm')
