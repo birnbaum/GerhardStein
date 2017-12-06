@@ -1,16 +1,11 @@
-from __future__ import print_function
-
 import numpy as np
 import tensorflow as tf
-
 import argparse
 import os
 import pickle
 import copy
 import sys
-import string
 
-from utils import TextLoader
 from model import Model
 
 def main():

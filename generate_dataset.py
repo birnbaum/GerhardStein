@@ -15,7 +15,7 @@ def main():
     with open('config.yml', 'r') as c:
         config = yaml.load(c)
 
-    generate_text(args, config)
+    generate_dataset(args, config)
 
 
 def iter_row(cursor, size=1000):
@@ -43,7 +43,7 @@ def remove_rare_characters(text):
     return re.sub('[' + re.escape(''.join(chars_to_remove)) + ']', '', text)
 
 
-def generate_text(args, config):
+def generate_dataset(args, config):
     cnx = mysql.connector.connect(user=config["database"]["user"],
                                   password=config["database"]["password"],
                                   host=config["database"]["host"],

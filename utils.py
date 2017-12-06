@@ -1,6 +1,4 @@
-import codecs
 import os
-import io
 import collections
 import pickle
 from bz2 import BZ2File
