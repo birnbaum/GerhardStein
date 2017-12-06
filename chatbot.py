@@ -1,12 +1,14 @@
-import numpy as np
-import tensorflow as tf
 import argparse
+import copy
 import os
 import pickle
-import copy
 import sys
 
-from model import Model
+import numpy as np
+import tensorflow as tf
+
+from rnn.model import Model
+
 
 def main():
     parser = argparse.ArgumentParser()
