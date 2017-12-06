@@ -185,10 +185,9 @@ class Crawler:
         message = comment['message']
         # Remove comments with linked persons (they mostly contain only emojis)
         if 'message_tags' in comment:
-            return ''
-        # Remove comments with the hashtag #HassHilft (http://hasshilft.de/)
-        if '#HassHilft' in message:
-            return ''
+            for tag in comment['message_tags']:
+                if 'type' in tag and tag['type'] == 'user':
+                    message.replace(tag['name'], '')
         # Remove links
         message = re.sub(r'http\S+', '', message)
         return message.strip()
