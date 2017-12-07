@@ -10,6 +10,7 @@ database:
   password: ''
   db: facebook
 pages:
+  # NPD
   - npd.de
   - npdbw  # Baden-Württemberg
   - npdbayern  # Bayern
@@ -28,11 +29,30 @@ pages:
   - NPDSchleswigHolstein  # Schleswig-Holstein
   - npdthueringen  # Thüringen
 
-  - ff.frankfranz  # NPD Parteivorsitzender Frank Franz
+  # AfD
+  - alternativefuerde
+  - AfD.BW  # Baden-Württemberg
+  - afd.bayern  # Bayern
+  - afdberlin  # Berlin
+  - afd.brandenburg  # Brandenburg
+  - afd.hb  # Bremen
+  - afd.hamburg  # Hamburg
+  # - Alternative-für-Deutschland-Hessen-AfD-222005461272345  # Hessen
+  - AfD.MV  # Mecklenburg-Vorpommern
+  - AfDNDS  # Niedersachsen
+  - AfDfuerNRW  # Nordrhein-Westfalen
+  - afdrheinlandpfalz  # Rheinland-Pfalz
+  - AfDSaar  # Saarland
+  - AfD.Fraktion.Sachsen  # Sachsen
+  - SachsenAnhalt.AfD  # Sachsen-Anhalt
+  - AfD.Schleswig.Holstein.de  # Schleswig-Holstein
+  - AfD.Thueringen  # Thüringen
 
   # Other
-  # - patriotAUF
-  # - ring.nationaler.frauen
-  # - FamilieVolkundHeimat
-  # - junge.nationalisten
+  - ff.frankfranz  # NPD Parteivorsitzender Frank Franz
+  - patriotAUF
+  - ring.nationaler.frauen
+  - FamilieVolkundHeimat
+  - junge.nationalisten
+  - jafuer.de  # Junge Alternative
 startDate: 2008-01-01
