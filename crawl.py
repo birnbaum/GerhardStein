@@ -39,8 +39,11 @@ class Crawler:
 
     def crawl(self):
         """Crawls all posts and comments that are specified in the configuration"""
+        self.crawl_pages()
+        self.crawl_posts()
+        self.crawl_comments()
 
-        # Crawl pages
+    def crawl_pages(self):
         for page_path in self.pages:
             self.cursor.execute('SELECT * FROM page WHERE path=%s', (page_path,))
             if len(self.cursor.fetchall()) == 0:
@@ -50,7 +53,7 @@ class Crawler:
                                     (page['id'], page_path, page['name']))
                 self.cnx.commit()
 
-        # Crawl posts
+    def crawl_posts(self):
         self.cursor.execute('SELECT name, id, fb_id FROM page')
         for (page_name, page_id, page_fb_id) in self.cursor.fetchall():
             # Compute start and end date
@@ -74,7 +77,7 @@ class Crawler:
                     counter = counter + 1
             print(' {} new posts crawled'.format(counter))
 
-        # Crawl comments
+    def crawl_comments(self):
         bar = progressbar.ProgressBar()
         self.cursor.execute('SELECT id, page, fb_id, created_time FROM post WHERE do_not_crawl=0 ORDER BY created_time')
         fields = 'id,message,message_tags,from,created_time,comment_count,like_count'
@@ -89,24 +92,36 @@ class Crawler:
                 start_date = time.mktime(latest_date.timetuple())
                 comments = self.graph.get_all_connections(post_fb_id, 'comments', fields=fields, order='chronological',
                                                           limit=100, since=start_date)
-            for comment in comments:
-                success = self._add_comment(comment, post_id, page_id)
-                if success:
-                    comment_counter = comment_counter + 1
-                if success and comment['comment_count'] > 0:
+            try:
+                for comment in comments:
+                    success = self._add_comment(comment, post_id, page_id)
+                    if success:
+                        comment_counter = comment_counter + 1
+                    if success and comment['comment_count'] > 0:
+                        self.cnx.commit()
+                        comment_id = self.cursor.lastrowid
+                        subcomments = self.graph.get_all_connections(comment['id'], 'comments', fields=fields,
+                                                                     order='chronological', limit=500)
+                        for subcomment in subcomments:
+                            success = self._add_comment(subcomment, post_id, page_id, comment_id)
+                            if success:
+                                comment_counter = comment_counter + 1
                     self.cnx.commit()
-                    comment_id = self.cursor.lastrowid
-                    subcomments = self.graph.get_all_connections(comment['id'], 'comments', fields=fields,
-                                                                 order='chronological', limit=500)
-                    for subcomment in subcomments:
-                        success = self._add_comment(subcomment, post_id, page_id, comment_id)
-                        if success:
-                            comment_counter = comment_counter + 1
-                self.cnx.commit()
+            except facebook.GraphAPIError as e:
+                # In case the post was deleted before it was craweld and marked
+                # as 'do_not_crawl' this error will be thrown. We just mark the
+                # post as 'do_not_crawl' then and continue
+                if 'Unsupported get request. Object with ID \'{}\' does not exist'.format(post_fb_id) in e.message:
+                    self.cursor.execute('UPDATE post SET do_not_crawl=1 WHERE id=%s', (post_id,))
+                    self.cnx.commit()
+                    print('Skipping post {} because it was deleted'.format(post_fb_id))
+                    self.crawl_comments()
+                else:
+                    raise e
             # If all comments are crawled and post is older than 1 month, activate 'do_not_crawl' flag
             if post_created_time < (datetime.today() - timedelta(days=30)):
                 self.cursor.execute('UPDATE post SET do_not_crawl=1 WHERE id=%s', (post_id,))
-
+                self.cnx.commit()
         print('{} new comments added'.format(comment_counter))
 
     def _add_comment(self, comment, post_id, page_id, parent_comment=None):
@@ -187,7 +202,7 @@ class Crawler:
         if 'message_tags' in comment:
             for tag in comment['message_tags']:
                 if 'type' in tag and tag['type'] == 'user':
-                    message.replace(tag['name'], '')
+                    message = message.replace(tag['name'], '')
         # Remove links
         message = re.sub(r'http\S+', '', message)
         return message.strip()
