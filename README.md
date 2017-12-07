@@ -1,7 +1,7 @@
 # Gerhard Stein
 A racist chatbot trained on german facebook comments.
 
-The current prototype is trained on 380,000 comments from german far right pages (mostly NPD related) on a small RNN for about 24h on my laptop.
+Gerhard's current prototype is trained on 380,000 comments from german far right pages (mostly NPD related) on a small RNN for about 24h on my laptop.
 The name "Gerhard Stein" was determined by searching for the 88th most popular forename and the 88th most popular surname in this data set.
 Believe it or not, apparently there even was a famous Nazi called [Gerhart Stein](https://de.wikipedia.org/wiki/Gerhart_Stein).
 
@@ -21,7 +21,7 @@ Du bist doch nicht besser...
 Ich will die NPD wählen.
 ```
 
-I am currently extending the data set to contain more than 1,000,000 comments and want to train a new model on a larger network, stay tuned! I will publish the model once I'm done.
+I am currently extending the data set to contain more than 2,000,000 comments and want to train a new model on a larger network, stay tuned! I will publish the model once I'm done.
 
 ### The Crawler
 Is idempotent and can be configured useing `config.yml`.
@@ -50,7 +50,13 @@ This is key for analyzing which words are used often in a text compared to "norm
 I will probably try building up a corpus on my own by crawling all kinds of other facebook pages.
 
 
-### Next steps
+## Next steps
+- Crawl more data (In Progress, state 7.12.: 1,600,000 comments)
+- Find some powerful machine to train a new model
+- Analyse the data and write a blog article
+- Twitter bot?
+- Build an interactive frontend with the model running on [deeplearn.js](https://github.com/PAIR-code/deeplearnjs)
+
 One final thought I have is to come up with a way to convert a facebook comment into a vector that indicates it's topic/intention/style, similar to what e.g. word2vec does with words. This way one can easily train a classifier to identify hate speech. First I need to get more into NLP though...
 
 
