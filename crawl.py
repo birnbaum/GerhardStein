@@ -20,6 +20,7 @@ class Crawler:
         self.pages = config["pages"]
         self.start_date = config["startDate"]
         self.end_date = datetime.today() - timedelta(days=1)  # Only crawl comments older than 24h
+        self.timeout = 600  # 15 mins Timeout in case of reaching the request limit
 
         # Initialize Facebook Graph API
         if config["facebook"]["userToken"]:
@@ -39,9 +40,18 @@ class Crawler:
 
     def crawl(self):
         """Crawls all posts and comments that are specified in the configuration"""
-        self.crawl_pages()
-        self.crawl_posts()
-        self.crawl_comments()
+        try:
+            self.crawl_pages()
+            self.crawl_posts()
+            self.crawl_comments()
+        except facebook.GraphAPIError as e:
+            if '(#17) User request limit reached' in e.message:
+                wait_until = (datetime.now() + timedelta(seconds=self.timeout)).strftime("%H:%M:%S")
+                print('\nUser request limit reached, waiting until ' + wait_until)
+                time.sleep(self.timeout)
+                self.crawl()
+            else:
+                raise e
 
     def crawl_pages(self):
         for page_path in self.pages:
@@ -114,7 +124,7 @@ class Crawler:
                 if 'Unsupported get request. Object with ID \'{}\' does not exist'.format(post_fb_id) in e.message:
                     self.cursor.execute('UPDATE post SET do_not_crawl=1 WHERE id=%s', (post_id,))
                     self.cnx.commit()
-                    print('Skipping post {} because it was deleted'.format(post_fb_id))
+                    print('\nSkipping post {} because it was deleted'.format(post_fb_id))
                     self.crawl_comments()
                 else:
                     raise e
@@ -122,7 +132,7 @@ class Crawler:
             if post_created_time < (datetime.today() - timedelta(days=30)):
                 self.cursor.execute('UPDATE post SET do_not_crawl=1 WHERE id=%s', (post_id,))
                 self.cnx.commit()
-        print('{} new comments added'.format(comment_counter))
+        print('\n{} new comments added'.format(comment_counter))
 
     def _add_comment(self, comment, post_id, page_id, parent_comment=None):
         """Adds a comment to the data set
