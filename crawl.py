@@ -20,7 +20,7 @@ class Crawler:
         self.pages = config["pages"]
         self.start_date = config["startDate"]
         self.end_date = datetime.today() - timedelta(days=1)  # Only crawl comments older than 24h
-        self.timeout = 600  # 15 mins Timeout in case of reaching the request limit
+        self.base_timeout = 900  # 15 minutes
 
         # Initialize Facebook Graph API
         if config["facebook"]["userToken"]:
@@ -44,14 +44,23 @@ class Crawler:
             self.crawl_pages()
             self.crawl_posts()
             self.crawl_comments()
-        except facebook.GraphAPIError as e:
-            if '(#17) User request limit reached' in e.message:
-                wait_until = (datetime.now() + timedelta(seconds=self.timeout)).strftime("%H:%M:%S")
-                print('\nUser request limit reached, waiting until ' + wait_until)
-                time.sleep(self.timeout)
-                self.crawl()
-            else:
-                raise e
+        except Exception as exception:
+            self.handle_request_limit(exception)
+
+    def handle_request_limit(self, exception, timeout_factor=1):
+        if type(exception) == facebook.GraphAPIError and ('(#17) User request limit reached' in exception.message or
+                                                          'An unexpected error has occurred.' in exception.message):
+            timeout = self.base_timeout * timeout_factor
+            print('\nUser request limit reached, waiting for {} minutes until {}'.format(timeout // 60,
+                (datetime.now() + timedelta(seconds=timeout)).strftime("%H:%M:%S")))
+            time.sleep(timeout)
+            try:
+                self.graph.get_object('me')
+            except Exception as exception:
+                self.handle_request_limit(exception, timeout_factor * 2)
+            self.crawl()
+        else:
+            raise exception
 
     def crawl_pages(self):
         for page_path in self.pages:
