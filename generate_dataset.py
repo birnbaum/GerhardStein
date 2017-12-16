@@ -18,13 +18,24 @@ def main():
     generate_dataset(args, config)
 
 
-def iter_row(cursor, size=1000):
+def iter_row(cursor, size=10000):
     while True:
         rows = cursor.fetchmany(size)
         if not rows:
             break
         for row in rows:
             yield row
+
+
+def clean_tags(text):
+    """Removing @ tags that the crawler was not able to filter out because they were not returned in message_tags"""
+    if len(text) == 0 or ('@' in text and len(text.split(' ')) <= 3):
+        return ''
+    if text[0] == '@':
+        text = re.sub('@ ?.*?((:|,|\.| {2})| .*?[:,. ])', '', text)
+    else:
+        text = re.sub('@', '', text)
+    return text.strip()
 
 
 def remove_rare_characters(text):
@@ -54,6 +65,7 @@ def generate_dataset(args, config):
     count = cursor.fetchone()[0]
     bar = progressbar.ProgressBar(max_value=count)
 
+    # This query groups subcomments after their parent comments by time
     cursor.execute('''
         SELECT p.message,
             p.created_time as primary_sort,
@@ -73,8 +85,9 @@ def generate_dataset(args, config):
     for (message, _, _) in bar(iter_row(cursor)):
         lines = message.replace('\r', '\n').split('\n')
         for line in lines:
-            if 4 < len(line) < 1000 and '@ ' not in line:
-                txt += '> {}\n'.format(line.strip())
+            line = clean_tags(line)
+            if 4 < len(line) < 500 and '@ ' not in line:
+                txt += '> {}\n'.format(line)
 
     txt = remove_rare_characters(txt)
 

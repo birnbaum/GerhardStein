@@ -21,7 +21,7 @@ Du bist doch nicht besser...
 Ich will die NPD wählen.
 ```
 
-I am currently extending the data set to contain more than 2,000,000 comments and want to train a new model on a larger network, stay tuned! I will publish the model once I'm done.
+I already extended the data set to contain more than 2,900,000 comments and want to train a new model on a larger network, stay tuned! I will publish the model once I'm done.
 
 ### The Crawler
 Is idempotent and can be configured useing `config.yml`.
@@ -51,7 +51,7 @@ I will probably try building up a corpus on my own by crawling all kinds of othe
 
 
 ## Next steps
-- Crawl more data (In Progress, state 7.12.: 1,600,000 comments)
+- Improve the preprocessing to generate more usefull "conversations"
 - Find some powerful machine to train a new model
 - Analyse the data and write a blog article
 - Twitter bot?
