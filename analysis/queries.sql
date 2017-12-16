@@ -24,3 +24,9 @@ UNION
 SELECT 'TOTAL' as name, count(*) as count
 FROM comment
 ORDER BY count DESC;
+
+
+# Delete all posts and comments of a page
+DELETE FROM comment WHERE page=1 AND parent_comment IS NOT NULL;
+DELETE FROM comment WHERE page=1;
+DELETE FROM post WHERE page=1;

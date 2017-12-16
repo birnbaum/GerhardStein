@@ -12,6 +12,7 @@ database:
 pages:
   # NPD
   - npd.de
+  - junge.nationalisten
   - npdbw  # Baden-Württemberg
   - npdbayern  # Bayern
   - npd.berlin  # Berlin
@@ -31,6 +32,7 @@ pages:
 
   # AfD
   - alternativefuerde
+  - jafuer.de  # Junge Alternative
   - AfD.BW  # Baden-Württemberg
   - afd.bayern  # Bayern
   - afdberlin  # Berlin
@@ -49,10 +51,25 @@ pages:
   - AfD.Thueringen  # Thüringen
 
   # Other
+  - pegidaevofficial # PEGIDA
+  - merkelmusswegmittwoch
+
+  # News
+  - jungefreiheit
+  - Compact.Magazin
+  - PINEWSNET
+
+  # People
   - ff.frankfranz  # NPD Parteivorsitzender Frank Franz
+  - pegidalutz  # Lutz Bachmann, PEGIDA Initiator
+  - MichaelSturzenberger  # Ehem. Bundesvorsitzender "Die Freiheit“
+
+  # Patriot pages
   - patriotAUF
-  - ring.nationaler.frauen
+  - Deutsche.Patrioten.eK
   - FamilieVolkundHeimat
-  - junge.nationalisten
-  - jafuer.de  # Junge Alternative
+
+  # Other
+  - ring.nationaler.frauen
+  - Republikaner
 startDate: 2008-01-01
