@@ -58,7 +58,7 @@ class Crawler:
                 self.graph.get_object('me')
             except Exception as exception:
                 self.handle_request_limit(exception, timeout_factor * 2)
-            self.crawl()
+            self.crawl_comments()
         else:
             raise exception
 

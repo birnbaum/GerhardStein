@@ -9,10 +9,12 @@ database:
   user: root
   password: ''
   db: facebook
+startDate: 2008-01-01
 pages:
   # NPD
   - npd.de
   - junge.nationalisten
+  # Länder
   - npdbw  # Baden-Württemberg
   - npdbayern  # Bayern
   - npd.berlin  # Berlin
@@ -26,20 +28,22 @@ pages:
   - National.rlp  # Rheinland-Pfalz
   - npdsaar  # Saarland
   - npd.sachsen  # Sachsen
-  # - NPD-Sachsen-Anhalt-627792194016177  # Sachsen-Anhalt
+  - 627792194016177  # - NPD-Sachsen-Anhalt-627792194016177  # Sachsen-Anhalt
   - NPDSchleswigHolstein  # Schleswig-Holstein
   - npdthueringen  # Thüringen
 
   # AfD
   - alternativefuerde
   - jafuer.de  # Junge Alternative
+  - afd.bundestagsfraktion
+  # Länder
   - AfD.BW  # Baden-Württemberg
   - afd.bayern  # Bayern
   - afdberlin  # Berlin
   - afd.brandenburg  # Brandenburg
   - afd.hb  # Bremen
   - afd.hamburg  # Hamburg
-  # - Alternative-für-Deutschland-Hessen-AfD-222005461272345  # Hessen
+  - 222005461272345  # - Alternative-für-Deutschland-Hessen-AfD-222005461272345  # Hessen
   - AfD.MV  # Mecklenburg-Vorpommern
   - AfDNDS  # Niedersachsen
   - AfDfuerNRW  # Nordrhein-Westfalen
@@ -50,26 +54,39 @@ pages:
   - AfD.Schleswig.Holstein.de  # Schleswig-Holstein
   - AfD.Thueringen  # Thüringen
 
-  # Other
-  - pegidaevofficial # PEGIDA
-  - merkelmusswegmittwoch
-
   # News
   - jungefreiheit
   - Compact.Magazin
   - PINEWSNET
+  - EpochTimes.Deutsch
+  - ZUERST.Magazin
+  - DSVerlag
 
   # People
   - ff.frankfranz  # NPD Parteivorsitzender Frank Franz
   - pegidalutz  # Lutz Bachmann, PEGIDA Initiator
   - MichaelSturzenberger  # Ehem. Bundesvorsitzender "Die Freiheit“
+  - BeatrixVonStorch
 
-  # Patriot pages
+  # Other
+  - pegidaevofficial # PEGIDA
+  - merkelmusswegmittwoch
+  - einprozentfuerunserland
   - patriotAUF
   - Deutsche.Patrioten.eK
   - FamilieVolkundHeimat
-
-  # Other
+  - DeutschseinistkeinVerbrechen2
+  - RFD.Deutschland
+  - FreundeFuerDeutschland
+  - WirAlleSindDeutschland
+  - einwanderungskritik
   - ring.nationaler.frauen
   - Republikaner
-startDate: 2008-01-01
+  - Neuwahlen2015  # Umbenannt: Merkel muss weg
+  - PatriotischePlattform
+  - AufwachenDeutschland1
+  - 1523795871245611  # Patriotisch-deutsche-Kraft-1523795871245611
+  - 1620295554907676  # Deutschland-DECKT-AUF-1620295554907676
+  - 1393744130928449  # Wir-haben-die-Schnauze-voll-1393744130928449
+  - 825919710885582  # Deutschland-bleibt-deutsch-825919710885582
+  - 225297134261312  # Bürger-sagen-Nein-225297134261312
