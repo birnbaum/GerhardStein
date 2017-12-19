@@ -65,21 +65,33 @@ def generate_dataset(args, config):
     count = cursor.fetchone()[0]
     bar = progressbar.ProgressBar(max_value=count)
 
-    # This query groups subcomments after their parent comments by time
+    # This query groups comments by posts and places subcomments after their parent comments to
+    # have as much context between the comments as possible. Everything is sorted ASC by date.
     cursor.execute('''
+        # Parent comments
         SELECT p.message,
-            p.created_time as primary_sort,
-            Null as secondary_sort
+            user.name,
+            post.created_time as post_created_time,
+            p.created_time as comment_created_time,
+            Null as subcomment_created_time
         FROM comment p
+        JOIN user ON user.id = p.user
+        JOIN post ON post.id = p.post
         WHERE p.parent_comment IS NULL
         UNION
+        # Child comments
         SELECT c.message,
-            p.created_time as primary_sort,
-            c.created_time as secondary_sort
+            user.name,
+            post.created_time as post_created_time,
+            p.created_time as comment_created_time,
+            c.created_time as subcomment_created_time
         FROM comment c
+        JOIN user ON user.id = c.user
         JOIN comment p on p.id = c.parent_comment
-        ORDER BY primary_sort ASC,
-            secondary_sort ASC
+        JOIN post ON post.id = p.post
+        ORDER BY post_created_time ASC,
+            comment_created_time ASC,
+            subcomment_created_time ASC
     ''')
     txt = ''
     for (message, _, _) in bar(iter_row(cursor)):
