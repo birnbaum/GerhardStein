@@ -18,40 +18,13 @@ def main():
     generate_dataset(args, config)
 
 
-def iter_row(cursor, size=10000):
+def iter_row(cursor, size=1000):
     while True:
         rows = cursor.fetchmany(size)
         if not rows:
             break
         for row in rows:
             yield row
-
-
-def clean_tags(text):
-    """Removing @ tags that the crawler was not able to filter out because they were not returned in message_tags"""
-    if len(text) == 0 or ('@' in text and len(text.split(' ')) <= 3):
-        return ''
-    if text[0] == '@':
-        text = re.sub('@ ?.*?((:|,|\.| {2})| .*?[:,. ])', '', text)
-    else:
-        text = re.sub('@', '', text)
-    return text.strip()
-
-
-def remove_rare_characters(text):
-    """Removes all characters that appear in less than 0.002% of the cases"""
-    vocab_counter = collections.Counter()  # 750
-    vocab_counter.update(text)
-
-    threshold = len(text) * 0.00002
-    chars_to_remove = []
-    for char, count in reversed(vocab_counter.most_common()):
-        if count < threshold:
-            chars_to_remove.append(char)
-        else:
-            break
-
-    return re.sub('[' + re.escape(''.join(chars_to_remove)) + ']', '', text)
 
 
 def generate_dataset(args, config):
@@ -93,18 +66,81 @@ def generate_dataset(args, config):
             comment_created_time ASC,
             subcomment_created_time ASC
     ''')
-    txt = ''
-    for (message, _, _) in bar(iter_row(cursor)):
-        lines = message.replace('\r', '\n').split('\n')
+
+    ds = Dataset()
+    # As people tend to reference other people in subcomments, we collect the names of
+    # all subcomment authors to remove them from the result in the end.
+    authors = []
+    comments = []
+    for (message, author, post_date, comment_date, subcomment_date) in bar(iter_row(cursor)):
+        if subcomment_date is None:  # is parent
+            ds.push(comments, authors)
+            authors = [author]
+            comments = [message]
+        else:  # is child
+            authors.append(author)
+            comments.append(message)
+    ds.write(args.out)
+
+
+class Dataset:
+    def __init__(self):
+        self.text = ''
+        self.vocab_counter = collections.Counter()
+
+    def write(self, outfile):
+        self.remove_rare_characters()
+        ending = outfile.split('.')[-1]
+        if ending == 'txt':
+            with open(outfile, "wb") as f:
+                f.write(self.text.encode("cp1252", errors="ignore"))
+        # TODO add bzip
+        else:
+            raise Exception  # TODO
+
+    def push(self, comments, authors):
+        lines = []
+        for comment in comments:
+            lines.extend(comment.replace('\r', '\n').split('\n'))
+        txt = ''
         for line in lines:
-            line = clean_tags(line)
-            if 4 < len(line) < 500 and '@ ' not in line:
+            line = self.clean_tags(line)
+            if 4 < len(line) < 500:
                 txt += '> {}\n'.format(line)
+        escaped_authors = [re.escape(author) for author in authors]
+        txt = re.sub('({})'.format('|'.join(escaped_authors)), '', txt)
+        self.text += txt
+        self.vocab_counter.update(txt)
 
-    txt = remove_rare_characters(txt)
+    def clean_tags(self, text):
+        """Removing @ tags that the crawler was not able to filter out because they were not returned in message_tags"""
+        if len(text) == 0 or ('@' in text and len(text.split(' ')) <= 3):
+            return ''
+        if text[0] == '@':
+            text = re.sub('@ ?.*?((:|,|\.| {2})| .*?[:,. ])', '', text)
+        else:
+            text = re.sub('@', '', text)
+        return text.strip()
 
-    with open(args.out, "wb") as f:
-        f.write(txt.encode("cp1252", errors="ignore"))
+    def remove_rare_characters(self):
+        """Removes all characters that appear in less than 0.002% of the cases"""
+        threshold = len(self.text) * 0.00002
+        chars_to_remove = []
+        for char, count in reversed(self.vocab_counter.most_common()):
+            if count < threshold:
+                chars_to_remove.append(char)
+            else:
+                break
+        self.text = re.sub('[' + re.escape(''.join(chars_to_remove)) + ']', '', self.text)
+
+    def merge_lines(self, lines):
+        """Cleans and selects qualifying lines and merges them to a string"""
+        txt = ''
+        for line in lines:
+            line = self.clean_tags(line)
+            if 4 < len(line) < 500:
+                txt += '> {}\n'.format(line)
+        return txt
 
 
 if __name__ == '__main__':
