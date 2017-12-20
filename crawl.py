@@ -21,6 +21,7 @@ class Crawler:
         self.start_date = config["startDate"]
         self.end_date = datetime.today() - timedelta(days=1)  # Only crawl comments older than 24h
         self.base_timeout = 900  # 15 minutes
+        self.comment_counter = 0
 
         # Initialize Facebook Graph API
         if config["facebook"]["userToken"]:
@@ -97,10 +98,16 @@ class Crawler:
             print(' {} new posts crawled'.format(counter))
 
     def crawl_comments(self):
+        # Configure the progress bar
+        self.cursor.execute('SELECT count(id) FROM post')
+        posts_count = self.cursor.fetchone()[0]
+        if not hasattr(self, 'initial_posts_count'):
+            self.initial_posts_count = posts_count
         bar = progressbar.ProgressBar()
+        bar.update(self.initial_posts_count-posts_count)
+
         self.cursor.execute('SELECT id, page, fb_id, created_time FROM post WHERE do_not_crawl=0 ORDER BY created_time')
         fields = 'id,message,message_tags,from,created_time,comment_count,like_count'
-        comment_counter = 0
         for (post_id, page_id, post_fb_id, post_created_time) in bar(self.cursor.fetchall()):
             self.cursor.execute('SELECT max(created_time) FROM comment WHERE post=%s', (post_id,))
             latest_date = self.cursor.fetchone()[0]
@@ -115,7 +122,7 @@ class Crawler:
                 for comment in comments:
                     success = self._add_comment(comment, post_id, page_id)
                     if success:
-                        comment_counter = comment_counter + 1
+                        self.comment_counter = self.comment_counter + 1
                     if success and comment['comment_count'] > 0:
                         self.cnx.commit()
                         comment_id = self.cursor.lastrowid
@@ -124,7 +131,7 @@ class Crawler:
                         for subcomment in subcomments:
                             success = self._add_comment(subcomment, post_id, page_id, comment_id)
                             if success:
-                                comment_counter = comment_counter + 1
+                                self.comment_counter += 1
                     self.cnx.commit()
             except facebook.GraphAPIError as e:
                 # In case the post was deleted before it was craweld and marked
@@ -141,7 +148,7 @@ class Crawler:
             if post_created_time < (datetime.today() - timedelta(days=30)):
                 self.cursor.execute('UPDATE post SET do_not_crawl=1 WHERE id=%s', (post_id,))
                 self.cnx.commit()
-        print('\n{} new comments added'.format(comment_counter))
+        print('\n{} new comments added'.format(self.comment_counter))
 
     def _add_comment(self, comment, post_id, page_id, parent_comment=None):
         """Adds a comment to the data set
