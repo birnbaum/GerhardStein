@@ -26,7 +26,6 @@ def iter_row(cursor, size=1000):
         for row in rows:
             yield row
 
-
 def generate_dataset(args, config):
     cnx = mysql.connector.connect(user=config["database"]["user"],
                                   password=config["database"]["password"],
@@ -40,6 +39,7 @@ def generate_dataset(args, config):
 
     # This query groups comments by posts and places subcomments after their parent comments to
     # have as much context between the comments as possible. Everything is sorted ASC by date.
+    print('Executing SQL query...')
     cursor.execute('''
         # Parent comments
         SELECT p.message,
@@ -65,73 +65,84 @@ def generate_dataset(args, config):
         ORDER BY post_created_time ASC,
             comment_created_time ASC,
             subcomment_created_time ASC
+        LIMIT 300000
     ''')
+    print('Done')
 
     ds = Dataset()
     # As people tend to reference other people in subcomments, we collect the names of
     # all subcomment authors to remove them from the result in the end.
-    authors = []
+    authors = set()
     comments = []
     for (message, author, post_date, comment_date, subcomment_date) in bar(iter_row(cursor)):
         if subcomment_date is None:  # is parent
             ds.push(comments, authors)
-            authors = [author]
+            authors = {author}
             comments = [message]
         else:  # is child
-            authors.append(author)
+            authors.add(author)
             comments.append(message)
     ds.write(args.out)
 
 
 class Dataset:
     def __init__(self):
-        self.text = ''
+        self.batches = []
         self.vocab_counter = collections.Counter()
 
     def write(self, outfile):
-        self.remove_rare_characters()
+        """Writes the dataset to a text file"""
+        output = self.create_output()
         ending = outfile.split('.')[-1]
         if ending == 'txt':
             with open(outfile, "wb") as f:
-                f.write(self.text.encode("cp1252", errors="ignore"))
+                f.write(output)
         # TODO add bzip
         else:
-            raise Exception  # TODO
+            raise ValueError('outfile has to be a .txt file')
 
+    @profile
     def push(self, comments, authors):
+        """Adds a new bathch of comments to the dataset. The set of authors ist used to further clean the comments"""
         lines = []
         for comment in comments:
             lines.extend(comment.replace('\r', '\n').split('\n'))
         txt = ''
+        authors = [re.escape(author) for author in authors]
         for line in lines:
-            line = self.clean_tags(line)
+            line = self.remove_usernames(line, authors)
             if 4 < len(line) < 500:
                 txt += '> {}\n'.format(line)
-        escaped_authors = [re.escape(author) for author in authors]
-        txt = re.sub('({})'.format('|'.join(escaped_authors)), '', txt)
-        self.text += txt
+        self.batches.append(txt)
         self.vocab_counter.update(txt)
 
-    def clean_tags(self, text):
-        """Removing @ tags that the crawler was not able to filter out because they were not returned in message_tags"""
+    def remove_usernames(self, text, authors):
+        """Removing user names that the crawler was not able to filter out because they were not returned in Graph API's message_tags"""
+        # First remove the old fashined @ tags
         if len(text) == 0 or ('@' in text and len(text.split(' ')) <= 3):
             return ''
         if text[0] == '@':
             text = re.sub('@ ?.*?((:|,|\.| {2})| .*?[:,. ])', '', text)
         else:
             text = re.sub('@', '', text)
+        # Then the names of all the authors from the comment and it's subcomments because they mainly reference each other
+        text = re.sub('({})'.format('|'.join(authors)), '', text)
         return text.strip()
 
-    def remove_rare_characters(self):
-        """Removes all characters that appear in less than 0.002% of the cases"""
-        threshold = len(self.text) * 0.00002
+    @profile
+    def create_output(self):
+        """Generates one big cp1252 string"""
+        output = ''.join(self.batches)
+        #Remove all characters that appear in less than 0.002% of the cases
+        threshold = len(output) * 0.00002
         chars_to_remove = []
         for char, count in reversed(self.vocab_counter.most_common()):
             if count < threshold:
                 chars_to_remove.append(char)
             else:
                 break
-        self.text = re.sub('[' + re.escape(''.join(chars_to_remove)) + ']', '', self.text)
+        output = re.sub('[' + re.escape(''.join(chars_to_remove)) + ']', '', output)
+        return output.encode("cp1252", errors="ignore")
 
     def merge_lines(self, lines):
         """Cleans and selects qualifying lines and merges them to a string"""
